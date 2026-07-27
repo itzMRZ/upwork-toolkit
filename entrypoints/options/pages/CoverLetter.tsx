@@ -7,7 +7,7 @@ import openAiApiConfigStorage, {
   OpenAiApiConfig,
   providerIds,
 } from '@/utils/openAiApiConfig'
-import openAiApiKeyStorage from '@/utils/openAiApiKey'
+import openAiApiSettingsStorage from '@/utils/openAiApiSettings'
 import promptStorage from '@/utils/prompt'
 import { captureException } from '@/utils/sentry'
 import { helperKey } from '@/utils/system'
@@ -51,7 +51,9 @@ const ApiKeyInfoAlert = (props: { provider: ApiProvider }) => {
 
     return (
       <Alert severity="info" sx={{ mt: 2 }}>
-        <AlertTitle>Connect your API key to start generating cover letters</AlertTitle>
+        <AlertTitle>
+          Connect your API key to start generating cover letters
+        </AlertTitle>
         Get an API key from {provider.label} and paste it below.
       </Alert>
     )
@@ -59,8 +61,11 @@ const ApiKeyInfoAlert = (props: { provider: ApiProvider }) => {
 
   return (
     <Alert severity="info" sx={{ mt: 2 }}>
-      <AlertTitle>Connect your OpenAI API key to start generating cover letters</AlertTitle>
-      You can now apply to jobs with custom-tailored AI generated cover letters - just add your OpenAI-compatible API key by clicking the button below.
+      <AlertTitle>
+        Connect your OpenAI API key to start generating cover letters
+      </AlertTitle>
+      You can now apply to jobs with custom-tailored AI generated cover letters
+      - just add your OpenAI-compatible API key by clicking the button below.
       <br />
       Create a key at{' '}
       <Link href={OPENAI_API_KEYS_URL} target="_blank" rel="noopener">
@@ -242,9 +247,12 @@ const CoverLetter = () => {
     }
 
     const providerChanged = savedApiConfig.provider !== nextConfig.provider
-    const savedKey = await openAiApiKeyStorage.save(apiKey.trim())
+    const savedSettings = await openAiApiSettingsStorage.save({
+      apiKey: apiKey.trim(),
+      config: nextConfig,
+    })
+    const savedKey = savedSettings.apiKey
 
-    await openAiApiConfigStorage.save(nextConfig)
     setApiKey(savedKey)
     setSavedApiKey(savedKey)
     setApiConfig(nextConfig)
@@ -269,19 +277,18 @@ const CoverLetter = () => {
 
   useEffect(() => {
     const init = async () => {
-      const [prompt, text, apiKey, apiConfig] = await Promise.all([
+      const [prompt, text, apiSettings] = await Promise.all([
         promptStorage.get(),
         coverLetterStorage.get(),
-        openAiApiKeyStorage.get(),
-        openAiApiConfigStorage.get(),
+        openAiApiSettingsStorage.get(),
       ])
 
       setPrompt(prompt)
       setText(text)
-      setApiKey(apiKey)
-      setSavedApiKey(apiKey)
-      setApiConfig(apiConfig)
-      setSavedApiConfig(apiConfig)
+      setApiKey(apiSettings.apiKey)
+      setSavedApiKey(apiSettings.apiKey)
+      setApiConfig(apiSettings.config)
+      setSavedApiConfig(apiSettings.config)
 
       setInitialized(true)
     }
@@ -297,9 +304,7 @@ const CoverLetter = () => {
 
       {showKeyForm ? (
         <>
-          {!hasApiKey && (
-            <ApiKeyInfoAlert provider={apiConfig.provider} />
-          )}
+          {!hasApiKey && <ApiKeyInfoAlert provider={apiConfig.provider} />}
 
           <AiProviderFields
             apiConfig={apiConfig}

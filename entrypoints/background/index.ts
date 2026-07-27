@@ -3,7 +3,7 @@ import openAiApi from '@/api/openai'
 import extension, { Cycles } from '@/utils/extension'
 import stateStorage, { GlobalState } from '@/utils/globalState'
 import openAiApiConfigStorage from '@/utils/openAiApiConfig'
-import openAiApiKeyStorage from '@/utils/openAiApiKey'
+import openAiApiSettingsStorage from '@/utils/openAiApiSettings'
 import runtime, { GenerateCoverLetterResponse } from '@/utils/runtime'
 import { captureException } from '@/utils/sentry'
 import dailyReport from './dailyReport'
@@ -176,17 +176,19 @@ export default defineBackground({
         }
 
         try {
-          const [apiKey, savedApiConfig] = await Promise.all([
-            openAiApiKeyStorage.get(),
-            openAiApiConfigStorage.get(),
-          ])
+          const { apiKey, config: savedApiConfig } =
+            await openAiApiSettingsStorage.get()
 
           if (!apiKey) {
             post({ type: 'error', error: 'NO_API_KEY' })
             return
           }
 
-          if (!(await openAiApiConfigStorage.hasPermission(savedApiConfig.provider))) {
+          if (
+            !(await openAiApiConfigStorage.hasPermission(
+              savedApiConfig.provider
+            ))
+          ) {
             post({ type: 'error', error: 'API_PROVIDER_PERMISSION_REQUIRED' })
             return
           }
