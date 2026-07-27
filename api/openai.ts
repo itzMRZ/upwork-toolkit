@@ -88,6 +88,10 @@ const readStream = async (
     }
   }
 
+  if (buffer && handleStreamLine(buffer, onChunk)) {
+    return
+  }
+
   // Reaching here means the stream closed without a `[DONE]` sentinel, so the
   // response was truncated - surface it instead of reporting a partial success.
   throw new GenerationError('GENERATION_FAILED')
