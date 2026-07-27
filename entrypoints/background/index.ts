@@ -2,6 +2,7 @@ import { browser, defineBackground } from '#imports'
 import openAiApi from '@/api/openai'
 import extension, { Cycles } from '@/utils/extension'
 import stateStorage, { GlobalState } from '@/utils/globalState'
+import openAiApiConfigStorage from '@/utils/openAiApiConfig'
 import openAiApiKeyStorage from '@/utils/openAiApiKey'
 import runtime, { GenerateCoverLetterResponse } from '@/utils/runtime'
 import { captureException } from '@/utils/sentry'
@@ -175,15 +176,27 @@ export default defineBackground({
         }
 
         try {
-          const apiKey = await openAiApiKeyStorage.get()
+          const [apiKey, savedApiConfig] = await Promise.all([
+            openAiApiKeyStorage.get(),
+            openAiApiConfigStorage.get(),
+          ])
 
           if (!apiKey) {
             post({ type: 'error', error: 'NO_API_KEY' })
             return
           }
 
+          if (!(await openAiApiConfigStorage.hasPermission(savedApiConfig.provider))) {
+            post({ type: 'error', error: 'API_PROVIDER_PERMISSION_REQUIRED' })
+            return
+          }
+
           await openAiApi.generateCoverLetter({
             apiKey,
+            endpoint: openAiApiConfigStorage.getChatCompletionsEndpoint(
+              savedApiConfig.provider
+            ),
+            model: savedApiConfig.model,
             prompt: message.prompt,
             signal: abortController.signal,
             onChunk: (content) => post({ type: 'chunk', content }),
@@ -197,7 +210,12 @@ export default defineBackground({
           }
 
           captureException(error)
-          post({ type: 'error', error: 'GENERATION_FAILED' })
+          post({
+            type: 'error',
+            error: openAiApi.isGenerationError(error)
+              ? error.code
+              : 'GENERATION_FAILED',
+          })
         }
       })
     })

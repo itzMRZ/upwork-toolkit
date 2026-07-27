@@ -16,6 +16,44 @@ import {
 } from '@mui/material'
 import { useContext, useEffect, useRef, useState } from 'react'
 
+const getGenerationErrorMessage = (
+  error: Extract<GenerateCoverLetterResponse, { type: 'error' }>['error']
+) => {
+  if (error === 'NO_API_KEY') {
+    return 'Add an API key in the extension’s Cover letter settings to generate cover letters.'
+  }
+
+  if (error === 'API_PROVIDER_PERMISSION_REQUIRED') {
+    return 'Grant access to your selected AI provider in the extension’s Cover letter settings.'
+  }
+
+  if (error === 'ACCESS_DENIED') {
+    return 'Your selected AI provider denied access. Check your account permissions and API key.'
+  }
+
+  if (error === 'INVALID_API_KEY') {
+    return 'Your API key was rejected. Check the key for your selected AI provider.'
+  }
+
+  if (error === 'INSUFFICIENT_CREDITS') {
+    return 'Your selected AI provider account has insufficient credit to generate a cover letter.'
+  }
+
+  if (error === 'MODEL_UNAVAILABLE') {
+    return 'This model is unavailable from your selected AI provider. Select another model and try again.'
+  }
+
+  if (error === 'NETWORK_ERROR') {
+    return 'Could not reach your selected AI provider. Check your connection and try again.'
+  }
+
+  if (error === 'RATE_LIMITED') {
+    return 'Your selected AI provider is rate-limiting requests. Wait a moment and try again.'
+  }
+
+  return 'Cover letter generation failed. Please try again.'
+}
+
 const ChatGptDialog = (props: {
   onClose: () => void
   jobTitle: string
@@ -93,11 +131,7 @@ const ChatGptDialog = (props: {
       if (response.type === 'error') {
         setStreaming(false)
         setMode('writingPrompt')
-        setError(
-          response.error === 'NO_API_KEY'
-            ? 'Add your OpenAI API key in the extension’s Cover letter settings to generate cover letters.'
-            : 'Cover letter generation failed. Please try again.'
-        )
+        setError(getGenerationErrorMessage(response.error))
         finish()
       }
     })
